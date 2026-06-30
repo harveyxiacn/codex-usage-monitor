@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 const test = require('node:test');
@@ -8,6 +10,21 @@ const test = require('node:test');
 const fixture = path.join(__dirname, 'fixtures', 'session-basic.jsonl');
 const cli = path.join(__dirname, '..', 'bin', 'codex-usage-monitor.js');
 const stop = path.join(__dirname, '..', 'bin', 'on-stop.js');
+
+function tempCodexHome() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-monitor-'));
+}
+
+function stopInput() {
+  return JSON.stringify({
+    hook_event_name: 'Stop',
+    session_id: 'sess_basic',
+    transcript_path: fixture,
+    cwd: 'E:\\Project\\demo',
+    model: 'gpt-5.4-mini',
+    turn_id: 'turn_two',
+  });
+}
 
 test('statusline command prints a compact one-line summary', () => {
   const result = spawnSync(process.execPath, [cli, 'statusline', '--file', fixture, '--ascii', '--no-color'], {
@@ -33,22 +50,65 @@ test('json command emits machine-readable usage summary', () => {
 });
 
 test('Stop hook writes JSON to stdout and human summary to stderr', () => {
-  const input = JSON.stringify({
-    hook_event_name: 'Stop',
-    session_id: 'sess_basic',
-    transcript_path: fixture,
-    cwd: 'E:\\Project\\demo',
-    model: 'gpt-5.4-mini',
-    turn_id: 'turn_two',
-  });
   const result = spawnSync(process.execPath, [stop], {
-    input,
+    input: stopInput(),
     encoding: 'utf8',
-    env: { ...process.env, CODEX_USAGE_MONITOR_ASCII: '1', NO_COLOR: '1' },
+    env: {
+      ...process.env,
+      CODEX_HOME: tempCodexHome(),
+      CODEX_USAGE_MONITOR_ASCII: '1',
+      CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS: '0',
+      CODEX_USAGE_MONITOR_QUIET: '0',
+      NO_COLOR: '1',
+    },
   });
 
   assert.equal(result.status, 0);
   assert.deepEqual(JSON.parse(result.stdout), { continue: true });
   assert.match(result.stderr, /codex-usage-monitor/);
   assert.match(result.stderr, /GPT-5\.4 mini/);
+});
+
+test('Stop hook quiet mode suppresses human summary', () => {
+  const result = spawnSync(process.execPath, [stop], {
+    input: stopInput(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      CODEX_USAGE_MONITOR_QUIET: '1',
+      CODEX_HOME: tempCodexHome(),
+    },
+  });
+
+  assert.equal(result.status, 0);
+  assert.deepEqual(JSON.parse(result.stdout), { continue: true });
+  assert.equal(result.stderr, '');
+});
+
+test('Stop hook interval suppresses repeated human summaries', () => {
+  const codexHome = tempCodexHome();
+  const env = {
+    ...process.env,
+    CODEX_USAGE_MONITOR_ASCII: '1',
+    CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS: '300',
+    NO_COLOR: '1',
+    CODEX_HOME: codexHome,
+  };
+
+  const first = spawnSync(process.execPath, [stop], {
+    input: stopInput(),
+    encoding: 'utf8',
+    env,
+  });
+  const second = spawnSync(process.execPath, [stop], {
+    input: stopInput(),
+    encoding: 'utf8',
+    env,
+  });
+
+  assert.equal(first.status, 0);
+  assert.match(first.stderr, /codex-usage-monitor/);
+  assert.equal(second.status, 0);
+  assert.deepEqual(JSON.parse(second.stdout), { continue: true });
+  assert.equal(second.stderr, '');
 });

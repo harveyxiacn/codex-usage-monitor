@@ -2,6 +2,7 @@
 'use strict';
 
 const { formatStopBox } = require('../lib/format');
+const { recordHookSummaryShown, shouldShowHookSummary } = require('../lib/hook-state');
 const { summarizeSessionFile } = require('../lib/session');
 
 main().catch(() => {
@@ -21,15 +22,18 @@ async function main() {
     || hook.transcriptPath
     || (hook.payload && (hook.payload.transcript_path || hook.payload.transcriptPath));
 
-  if (transcriptPath && !isQuiet()) {
+  if (transcriptPath && shouldShowHookSummary()) {
     const summary = await summarizeSessionFile(transcriptPath);
     if (summary) {
       if (hook.model && !summary.model) summary.model = hook.model;
       const box = formatStopBox(summary, {
         ascii: Boolean(process.env.CODEX_USAGE_MONITOR_ASCII),
-        color: !(process.env.NO_COLOR || process.env.CODEX_USAGE_MONITOR_NO_COLOR),
+        color: !(process.env.NO_COLOR || process.env.CODEX_USAGE_MONITOR_NO_COLOR || process.env.FORCE_COLOR === '0'),
       });
-      if (box) process.stderr.write(`${box}\n`);
+      if (box) {
+        process.stderr.write(`${box}\n`);
+        recordHookSummaryShown();
+      }
     }
   }
 
@@ -38,11 +42,6 @@ async function main() {
 
 function finish() {
   process.stdout.write(JSON.stringify({ continue: true }));
-}
-
-function isQuiet() {
-  return process.env.CODEX_USAGE_MONITOR_QUIET === '1'
-    || process.env.CODEX_USAGE_MONITOR_QUIET === 'true';
 }
 
 function readStdin() {
