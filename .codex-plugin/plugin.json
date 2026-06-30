@@ -1,6 +1,6 @@
 {
   "name": "codex-usage-monitor",
-  "version": "0.1.0+codex.20260630042410",
+  "version": "0.1.0+codex.20260630050919",
   "description": "Show Codex CLI token usage, model, reasoning effort, context, cache hits, rate limits, and API-equivalent cost.",
   "author": {
     "name": "harveyxiacn"
