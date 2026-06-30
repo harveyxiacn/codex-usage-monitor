@@ -55,6 +55,25 @@ test('shouldShowHookSummary throttles repeated displays within interval', () => 
   assert.equal(shouldShowHookSummary({ env, codexHome, nowMs: 301000 }), true);
 });
 
+test('shouldShowHookSummary can seed and throttle an independent work interval', () => {
+  const codexHome = tempHome();
+  const options = {
+    env: {},
+    codexHome,
+    stateKey: 'lastWorkDisplayAt',
+    intervalEnv: 'CODEX_USAGE_MONITOR_WORK_INTERVAL_SECONDS',
+    defaultIntervalSeconds: 300,
+    firstShow: false,
+  };
+
+  assert.equal(shouldShowHookSummary({ ...options, nowMs: 1000 }), false);
+  assert.equal(shouldShowHookSummary({ ...options, nowMs: 200000 }), false);
+  assert.equal(shouldShowHookSummary({ ...options, nowMs: 301000 }), true);
+
+  recordHookSummaryShown({ codexHome, stateKey: 'lastWorkDisplayAt', nowMs: 301000 });
+  assert.equal(shouldShowHookSummary({ ...options, nowMs: 400000 }), false);
+});
+
 test('hook state tolerates corrupt or unwritable state', () => {
   const codexHome = tempHome();
   fs.writeFileSync(hookStatePath(codexHome), '{not json', 'utf8');

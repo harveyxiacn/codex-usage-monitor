@@ -49,7 +49,22 @@ Stop-hook box after a Codex turn:
 
 Install the plugin and restart Codex. The bundled Stop hook prints a colored
 usage box after each completed turn. It does not replace the native Codex
-footer.
+footer. Because some Codex surfaces capture hook stdout and stderr, the hook
+also tries to write directly to the active terminal (`CONOUT$` on Windows,
+`/dev/tty` on Linux and macOS).
+
+### While Codex Is Working
+
+The bundled `PostToolUse` hook can print the same monitor while Codex is still
+working. It runs after tool calls and is throttled to once every 300 seconds by
+default:
+
+```bash
+CODEX_USAGE_MONITOR_WORK_INTERVAL_SECONDS=300
+```
+
+Set the value to `0` to show after every tool call, or use a larger number for
+less frequent updates.
 
 ### During Long Tasks
 
@@ -147,6 +162,8 @@ Environment variables:
 | `CODEX_USAGE_MONITOR_NO_COLOR=1` | Disable ANSI colors. |
 | `CODEX_USAGE_MONITOR_QUIET=1` | Silence the Stop-hook summary box. |
 | `CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS=N` | Show the Stop-hook box at most once every `N` seconds. Unset means every turn. |
+| `CODEX_USAGE_MONITOR_WORK_INTERVAL_SECONDS=N` | Show the work-in-progress hook box at most once every `N` seconds. Default: 300. |
+| `CODEX_USAGE_MONITOR_DIRECT_TTY=0` | Disable direct terminal writes from hooks. |
 | `CODEX_USAGE_MONITOR_MAX_BYTES=N` | Skip transcript files larger than `N` bytes. Default: 50 MB. |
 
 ## Pricing Notes

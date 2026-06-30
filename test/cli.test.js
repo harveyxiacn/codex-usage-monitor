@@ -10,9 +10,18 @@ const test = require('node:test');
 const fixture = path.join(__dirname, 'fixtures', 'session-basic.jsonl');
 const cli = path.join(__dirname, '..', 'bin', 'codex-usage-monitor.js');
 const stop = path.join(__dirname, '..', 'bin', 'on-stop.js');
+const work = path.join(__dirname, '..', 'bin', 'on-work.js');
 
 function tempCodexHome() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-monitor-'));
+}
+
+function seedLatestSession(codexHome) {
+  const sessionDir = path.join(codexHome, 'sessions', '2026', '06', '30');
+  fs.mkdirSync(sessionDir, { recursive: true });
+  const sessionFile = path.join(sessionDir, 'rollout-test.jsonl');
+  fs.copyFileSync(fixture, sessionFile);
+  return sessionFile;
 }
 
 function stopInput() {
@@ -57,6 +66,8 @@ test('help command documents watch interval and hook throttle', () => {
   assert.equal(result.status, 0);
   assert.match(result.stdout, /watch \[--interval 5\].*Refresh statusline every N seconds/);
   assert.match(result.stdout, /CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS=N/);
+  assert.match(result.stdout, /CODEX_USAGE_MONITOR_WORK_INTERVAL_SECONDS=N/);
+  assert.match(result.stdout, /CODEX_USAGE_MONITOR_DIRECT_TTY=0/);
 });
 
 test('Stop hook writes JSON to stdout and human summary to stderr', () => {
@@ -69,6 +80,27 @@ test('Stop hook writes JSON to stdout and human summary to stderr', () => {
       CODEX_USAGE_MONITOR_ASCII: '1',
       CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS: '0',
       CODEX_USAGE_MONITOR_QUIET: '0',
+      NO_COLOR: '1',
+    },
+  });
+
+  assert.equal(result.status, 0);
+  assert.deepEqual(JSON.parse(result.stdout), { continue: true });
+  assert.match(result.stderr, /codex-usage-monitor/);
+  assert.match(result.stderr, /GPT-5\.4 mini/);
+});
+
+test('Stop hook falls back to latest Codex session when transcript_path is missing', () => {
+  const codexHome = tempCodexHome();
+  seedLatestSession(codexHome);
+  const result = spawnSync(process.execPath, [stop], {
+    input: JSON.stringify({ hook_event_name: 'Stop', model: 'gpt-5.4-mini' }),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      CODEX_HOME: codexHome,
+      CODEX_USAGE_MONITOR_ASCII: '1',
+      CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS: '0',
       NO_COLOR: '1',
     },
   });
@@ -121,4 +153,25 @@ test('Stop hook interval suppresses repeated human summaries', () => {
   assert.equal(second.status, 0);
   assert.deepEqual(JSON.parse(second.stdout), { continue: true });
   assert.equal(second.stderr, '');
+});
+
+test('PostToolUse work hook can show usage during long work intervals', () => {
+  const codexHome = tempCodexHome();
+  seedLatestSession(codexHome);
+  const result = spawnSync(process.execPath, [work], {
+    input: JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Bash' }),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      CODEX_HOME: codexHome,
+      CODEX_USAGE_MONITOR_ASCII: '1',
+      CODEX_USAGE_MONITOR_WORK_INTERVAL_SECONDS: '0',
+      NO_COLOR: '1',
+    },
+  });
+
+  assert.equal(result.status, 0);
+  assert.deepEqual(JSON.parse(result.stdout), { continue: true });
+  assert.match(result.stderr, /codex-usage-monitor/);
+  assert.match(result.stderr, /GPT-5\.4 mini/);
 });

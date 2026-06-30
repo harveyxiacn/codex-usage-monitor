@@ -6,6 +6,8 @@ const { recordHookSummaryShown, shouldShowHookSummary } = require('../lib/hook-s
 const { defaultCodexHome, findLatestSessionFile, summarizeSessionFile } = require('../lib/session');
 const { writeHumanOutput } = require('../lib/terminal-output');
 
+const WORK_STATE_KEY = 'lastWorkDisplayAt';
+
 main().catch(() => {
   finish();
 });
@@ -19,12 +21,22 @@ async function main() {
     hook = {};
   }
 
+  if (!shouldShowHookSummary({
+    stateKey: WORK_STATE_KEY,
+    intervalEnv: 'CODEX_USAGE_MONITOR_WORK_INTERVAL_SECONDS',
+    defaultIntervalSeconds: 300,
+    firstShow: false,
+  })) {
+    finish();
+    return;
+  }
+
   const transcriptPath = hook.transcript_path
     || hook.transcriptPath
     || (hook.payload && (hook.payload.transcript_path || hook.payload.transcriptPath))
     || findLatestSessionFile(defaultCodexHome());
 
-  if (transcriptPath && shouldShowHookSummary()) {
+  if (transcriptPath) {
     const summary = await summarizeSessionFile(transcriptPath);
     if (summary) {
       if (hook.model && !summary.model) summary.model = hook.model;
@@ -34,7 +46,7 @@ async function main() {
       });
       if (box) {
         writeHumanOutput(`${box}\n`);
-        recordHookSummaryShown();
+        recordHookSummaryShown({ stateKey: WORK_STATE_KEY });
       }
     }
   }
