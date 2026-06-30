@@ -43,6 +43,40 @@ Stop-hook box after a Codex turn:
 - Uses only Node.js built-ins. No install step beyond cloning the repo.
 - Keeps all data local. No telemetry, no network calls at runtime.
 
+## Recommended Usage
+
+### After Each Codex Turn
+
+Install the plugin and restart Codex. The bundled Stop hook prints a colored
+usage box after each completed turn. It does not replace the native Codex
+footer.
+
+### During Long Tasks
+
+Run the watcher in another terminal, split pane, or tmux pane:
+
+```bash
+codex-usage-monitor watch --interval 60
+```
+
+PowerShell:
+
+```powershell
+codex-usage-monitor watch --interval 60
+```
+
+Bash, Ubuntu, macOS, or tmux:
+
+```bash
+codex-usage-monitor watch --interval 60
+```
+
+### Quota Impact
+
+The Stop hook and watcher do not consume model quota. They read local Codex
+session JSONL files, perform local formatting, and do not make network or model
+calls.
+
 ## Install
 
 Clone the repo:
@@ -112,6 +146,7 @@ Environment variables:
 | `CODEX_USAGE_MONITOR_ASCII=1` | Use ASCII bars in all output. |
 | `CODEX_USAGE_MONITOR_NO_COLOR=1` | Disable ANSI colors. |
 | `CODEX_USAGE_MONITOR_QUIET=1` | Silence the Stop-hook summary box. |
+| `CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS=N` | Show the Stop-hook box at most once every `N` seconds. Unset means every turn. |
 | `CODEX_USAGE_MONITOR_MAX_BYTES=N` | Skip transcript files larger than `N` bytes. Default: 50 MB. |
 
 ## Pricing Notes

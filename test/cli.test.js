@@ -49,6 +49,16 @@ test('json command emits machine-readable usage summary', () => {
   assert.equal(payload.totalUsage.totalTokens, 2500);
 });
 
+test('help command documents watch interval and hook throttle', () => {
+  const result = spawnSync(process.execPath, [cli, 'help'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /watch \[--interval 5\].*Refresh statusline every N seconds/);
+  assert.match(result.stdout, /CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS=N/);
+});
+
 test('Stop hook writes JSON to stdout and human summary to stderr', () => {
   const result = spawnSync(process.execPath, [stop], {
     input: stopInput(),

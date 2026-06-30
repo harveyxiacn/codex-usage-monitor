@@ -126,7 +126,7 @@ Usage:
   codex-usage-monitor summary [--file session.jsonl]
   codex-usage-monitor statusline [--file session.jsonl]
   codex-usage-monitor json [--file session.jsonl]
-  codex-usage-monitor watch [--interval 5]
+  codex-usage-monitor watch [--interval 5]  Refresh statusline every N seconds
   codex-usage-monitor doctor
 
 Options:
@@ -134,5 +134,9 @@ Options:
   --codex-home PATH  Override CODEX_HOME / ~/.codex
   --ascii            Use ASCII progress bars
   --no-color         Disable ANSI color
+
+Environment:
+  CODEX_USAGE_MONITOR_HOOK_INTERVAL_SECONDS=N
+                   Throttle Stop-hook boxes to once every N seconds
 `;
 }
